@@ -1,0 +1,20 @@
+{
+    "pages": [
+      "pages/index/index"
+    ],
+    "window": {
+      "navigationBarBackgroundColor": "#1a1a1a",
+      "navigationBarTitleText": "BMPCC 4K Remote",
+      "navigationBarTextStyle": "white",
+      "backgroundColor": "#1a1a1a",
+      "backgroundTextStyle": "light"
+    },
+    "style": "v2",
+    "sitemapLocation": "sitemap.json",
+    "lazyCodeLoading": "requiredComponents",
+    "permission": {
+      "scope.bluetooth": {
+        "desc": "用于连接 BMPCC 4K 相机进行远程控制"
+      }
+    }
+  }

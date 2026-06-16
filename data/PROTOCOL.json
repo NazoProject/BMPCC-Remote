@@ -1,0 +1,46 @@
+{
+    "groups": [
+      {
+        "name": "Lens",
+        "normalized_name": "lens",
+        "id": 0,
+        "parameters": [
+          { "id": 0, "normalized_parameter": "focus", "type": "fixed16", "index": [] },
+          { "id": 1, "normalized_parameter": "instantaneous_autofocus", "type": "void", "index": [] },
+          { "id": 3, "normalized_parameter": "aperture_normalised", "type": "fixed16", "index": [] },
+          { "id": 5, "normalized_parameter": "instantaneous_auto_aperture", "type": "void", "index": [] },
+          { "id": 6, "normalized_parameter": "optical_image_stabilisation", "type": "boolean", "index": [] }
+        ]
+      },
+      {
+        "name": "Video",
+        "normalized_name": "video",
+        "id": 1,
+        "parameters": [
+          { "id": 9, "normalized_parameter": "recording_format", "type": "int16", "index": ["file frame rate","sensor frame rate","frame width","frame height","flags"] },
+          { "id": 14, "normalized_parameter": "iso", "type": "int32", "index": [] }
+        ]
+      },
+      {
+        "name": "Audio",
+        "normalized_name": "audio",
+        "id": 2,
+        "parameters": [
+          { "id": 0, "normalized_parameter": "mic_level", "type": "fixed16", "index": [] },
+          { "id": 1, "normalized_parameter": "headphone_level", "type": "fixed16", "index": [] },
+          { "id": 4, "normalized_parameter": "input_type", "type": "int8", "index": [] },
+          { "id": 6, "normalized_parameter": "phantom_power", "type": "boolean", "index": [] }
+        ]
+      },
+      {
+        "name": "Media",
+        "normalized_name": "media",
+        "id": 10,
+        "parameters": [
+          { "id": 0, "normalized_parameter": "codec", "type": "int8", "index": ["basic codec","code variant"] },
+          { "id": 4, "normalized_parameter": "record", "type": "void", "index": [] },
+          { "id": 3, "normalized_parameter": "still_capture", "type": "void", "index": [] }
+        ]
+      }
+    ]
+  }

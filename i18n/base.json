@@ -1,0 +1,11 @@
+{
+	"ios": {
+		"name": "NazoCube"
+	},
+	"android": {
+		"name": "NazoCube"
+	},
+	"common": {
+		"name": "NazoCube"
+	}
+}

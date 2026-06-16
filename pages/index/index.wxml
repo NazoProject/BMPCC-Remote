@@ -1,0 +1,262 @@
+<view class="container">
+  <!-- 未连接状态 -->
+  <view wx:if="{{!connected}}" class="connect-panel">
+    <button class="btn-primary" bindtap="onConnectClick">
+      🔗 连接相机
+    </button>
+    
+    <button class="btn-secondary" bindtap="onScanOnly">
+      🔍 扫描所有蓝牙设备（调试用）
+    </button>
+    
+    <view class="device-list" wx:if="{{scanning}}">
+      <view class="scanning-tip">
+        <text class="scanning-text">🔍 正在扫描蓝牙设备...</text>
+        <button class="btn-stop" bindtap="stopScan">停止扫描</button>
+      </view>
+    </view>
+    
+    <view class="device-list" wx:if="{{deviceList.length > 0}}">
+      <view class="list-title">
+        <text>📱 发现 {{deviceList.length}} 个蓝牙设备</text>
+        <text class="refresh-btn" bindtap="refreshScan">🔄 重新扫描</text>
+      </view>
+      <scroll-view class="device-scroll" scroll-y>
+        <view wx:for="{{deviceList}}" wx:key="deviceId" class="device-item" 
+              data-device="{{item}}" bindtap="selectDevice">
+          <view class="device-info">
+            <view class="device-name">
+              {{item.name || '未命名设备'}}
+              <text wx:if="{{item.name && item.name.startsWith('A:')}}" class="badge-camera">📷 相机</text>
+            </view>
+            <view class="device-id">{{item.deviceId}}</view>
+            <view class="device-signal">
+              信号强度: {{item.RSSI}} dBm
+              <view class="signal-bar" style="width: {{item.RSSI + 100}}px"></view>
+            </view>
+          </view>
+          <view class="device-connect" wx:if="{{item.name && item.name.startsWith('A:')}}">
+            <text class="connect-hint">点击连接</text>
+          </view>
+        </view>
+      </scroll-view>
+    </view>
+    
+    <view class="debug-info" wx:if="{{scanResult && !scanning && deviceList.length === 0}}">
+      <text class="debug-title">扫描结果：</text>
+      <text class="debug-text">{{scanResult}}</text>
+    </view>
+    
+    <view class="ble-tips" wx:if="{{!scanning && deviceList.length === 0 && !scanResult}}">
+      <text class="tips-title">💡 使用提示</text>
+      <text class="tips-text">1. 请确保手机蓝牙已开启</text>
+      <text class="tips-text">2. 请确保 BMPCC 4K 相机蓝牙已开启</text>
+      <text class="tips-text">3. 相机蓝牙名称以 "A:" 开头</text>
+      <text class="tips-text">4. 需要固件版本 ≥ 6.2 才能使用录制功能</text>
+      <text class="tips-text">5. 点击上方按钮开始扫描</text>
+    </view>
+
+    <view class="debug-panel" wx:if="{{debugLogs.length > 0}}">
+      <view class="debug-header">
+        <text class="debug-title">📋 调试日志</text>
+        <text class="debug-clear" bindtap="refreshScan">清除</text>
+      </view>
+      <scroll-view class="debug-scroll" scroll-y>
+        <view wx:for="{{debugLogs}}" wx:key="index" class="debug-item">
+          <text class="debug-time">{{item.time}}</text>
+          <text class="debug-msg">{{item.message}}</text>
+          <text class="debug-data" wx:if="{{item.data}}">{{item.data}}</text>
+        </view>
+      </scroll-view>
+    </view>
+  </view>
+
+  <!-- 同步中状态 -->
+  <view wx:elif="{{!cameraReady}}" class="sync-bar">
+    <text>⏳ 正在同步相机参数...</text>
+  </view>
+
+  <!-- 已连接状态 -->
+  <view wx:else>
+    <view class="firmware-warning" wx:if="{{requiresFirmwareUpdate}}">
+      <text class="warning-text">⚠️ 固件版本 {{firmwareVersion}} 过低，请升级至 6.2+ 以支持录制功能</text>
+    </view>
+
+    <scroll-view class="tab-bar" scroll-x enhanced show-scrollbar="{{false}}">
+      <view wx:for="{{tabs}}" wx:key="index" 
+            class="tab-item {{currentTab === index ? 'active' : ''}}"
+            data-index="{{index}}"
+            bindtap="switchTab">
+        {{item.name}}
+      </view>
+    </scroll-view>
+
+    <view class="content">
+      <!-- 录制按钮 -->
+      <view class="record-section">
+        <view class="record-status-indicator" wx:if="{{isRecording}}">
+          <view class="recording-dot-large"></view>
+          <text>RECORDING</text>
+        </view>
+        <button class="record-btn {{isRecording ? 'recording' : ''}}" bindtap="toggleRecording" disabled="{{requiresFirmwareUpdate}}">
+          <view class="record-icon" wx:if="{{!isRecording}}">⏺</view>
+          <view class="record-icon recording-animation" wx:else>🔴</view>
+          <text class="record-text">{{isRecording ? '停止录制' : '开始录制'}}</text>
+        </button>
+        <view class="record-status" wx:if="{{isRecording}}">
+          <view class="recording-dot"></view>
+          <text>录制中...</text>
+          <text class="recording-time">{{recordingTime}}</text>
+        </view>
+        <view class="record-hint" wx:if="{{!isRecording && !requiresFirmwareUpdate}}">
+          <text class="hint-text">点击红色按钮开始录制</text>
+        </view>
+        <view class="record-hint" wx:if="{{requiresFirmwareUpdate}}">
+          <text class="hint-text-warning">⚠️ 录制功能需要固件 6.2+</text>
+        </view>
+      </view>
+
+      <!-- 镜头控制 -->
+      <view wx:if="{{currentTab === 0}}">
+        <view class="card">
+          <view class="btn-group">
+            <button class="btn-outline-primary" bindtap="autoFocus">🎯 自动对焦</button>
+            <button class="btn-outline-primary" bindtap="autoAperture">📷 自动光圈</button>
+          </view>
+          <view wx:if="{{lensFocus !== undefined}}">
+            <view class="param-row">
+              <text class="form-label">🔘 对焦距离</text>
+              <text class="param-value">{{lensFocusPercent}}%</text>
+            </view>
+            <slider min="0" max="1" step="0.05" value="{{lensFocus}}" 
+                    data-group="0" data-id="0" bindchange="updateSliderParameter"/>
+          </view>
+          <view wx:if="{{lensAperture !== undefined}}">
+            <view class="param-row">
+              <text class="form-label">🔆 光圈</text>
+              <text class="param-value">f/{{apertureValue}}</text>
+            </view>
+            <slider min="0" max="1" step="0.05" value="{{lensAperture}}" 
+                    data-group="0" data-id="3" bindchange="updateSliderParameter"/>
+          </view>
+          <view wx:if="{{lensOIS !== undefined}}" class="checkbox-row">
+            <checkbox value="{{lensOIS}}" 
+                      data-group="0" data-id="6" bindtap="updateCheckboxParameter"/>
+            <text class="form-label">📱 OIS 光学防抖</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 视频控制 -->
+      <view wx:if="{{currentTab === 1}}">
+        <view class="card">
+          <view class="param-row">
+            <text class="form-label">🎬 帧率</text>
+            <picker mode="selector" range="{{frameRateOptions}}" value="{{selectedFrameRate}}"
+                    data-group="1" data-id="9" data-index="0" bindchange="updatePickerParameter">
+              <view class="form-select">{{frameRateOptions[selectedFrameRate]}} fps</view>
+            </picker>
+          </view>
+          <view class="param-row">
+            <text class="form-label">⚡ 升格帧率</text>
+            <picker mode="selector" range="{{offSpeedOptions}}" value="{{selectedOffSpeed}}"
+                    data-group="1" data-id="9" data-index="1" bindchange="updatePickerParameter">
+              <view class="form-select">{{offSpeedOptions[selectedOffSpeed]}} fps</view>
+            </picker>
+          </view>
+          <view class="param-row">
+            <text class="form-label">📐 分辨率</text>
+          </view>
+          <view class="resolution-group">
+            <button wx:for="{{resolutions}}" wx:key="index" 
+                    class="resolution-btn {{item.width === recordingFormatWidth && item.height === recordingFormatHeight ? 'active' : ''}}"
+                    data-width="{{item.width}}" data-height="{{item.height}}"
+                    bindtap="updateResolution">
+              {{item.name}}
+            </button>
+          </view>
+          <view class="param-row">
+            <text class="form-label">🎚️ ISO</text>
+            <text class="param-value">{{videoIso}}</text>
+          </view>
+          <slider min="0" max="{{isoList.length - 1}}" value="{{isoIndex}}" 
+                  data-group="1" data-id="14" data-options="{{isoList}}" bindchange="updateIsoParameter"/>
+        </view>
+      </view>
+
+      <!-- 音频控制 -->
+      <view wx:if="{{currentTab === 2}}">
+        <view class="card">
+          <view class="param-row">
+            <text class="form-label">🎤 麦克风电平</text>
+            <text class="param-value">{{audioMicLevelPercent}}%</text>
+          </view>
+          <slider min="0" max="1" step="0.01" value="{{audioMicLevel}}" 
+                  data-group="2" data-id="0" bindchange="updateSliderParameter"/>
+          <view class="param-row">
+            <text class="form-label">🎧 耳机音量</text>
+            <text class="param-value">{{audioHeadphonePercent}}%</text>
+          </view>
+          <slider min="0" max="1" step="0.01" value="{{audioHeadphoneLevel}}" 
+                  data-group="2" data-id="1" bindchange="updateSliderParameter"/>
+          <view class="param-row">
+            <text class="form-label">🔌 输入类型</text>
+            <picker mode="selector" range="{{inputTypeOptions}}" value="{{audioInputType}}"
+                    data-group="2" data-id="4" bindchange="updatePickerParameter">
+              <view class="form-select">{{inputTypeOptions[audioInputType]}}</view>
+            </picker>
+          </view>
+          <view class="checkbox-row">
+            <checkbox value="{{audioPhantomPower}}" 
+                      data-group="2" data-id="6" bindtap="updateCheckboxParameter"/>
+            <text class="form-label">⚡ 幻象电源 (48V)</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 媒体控制 -->
+      <view wx:if="{{currentTab === 3}}">
+        <view class="card">
+          <view class="param-row">
+            <text class="form-label">💿 编码格式</text>
+            <picker mode="selector" range="{{codecOptions}}" value="{{mediaCodecIndex}}"
+                    data-group="10" data-id="0" data-index="0" bindchange="updatePickerParameter">
+              <view class="form-select">{{codecOptions[mediaCodecIndex]}}</view>
+            </picker>
+          </view>
+          <view wx:if="{{mediaCodecIndex === 2}}">
+            <view class="param-row">
+              <text class="form-label">🎞️ ProRes 质量</text>
+              <picker mode="selector" range="{{proResOptions}}" value="{{proResIndex}}"
+                      data-group="10" data-id="0" data-index="1" bindchange="updatePickerParameter">
+                <view class="form-select">{{proResOptions[proResIndex]}}</view>
+              </picker>
+            </view>
+          </view>
+          <view wx:if="{{mediaCodecIndex === 3}}">
+            <view class="param-row">
+              <text class="form-label">🎞️ BRAW 质量</text>
+              <picker mode="selector" range="{{brawOptions}}" value="{{brawIndex}}"
+                      data-group="10" data-id="0" data-index="1" bindchange="updatePickerParameter">
+                <view class="form-select">{{brawOptions[brawIndex]}}</view>
+              </picker>
+            </view>
+          </view>
+        </view>
+        <view class="card">
+          <view class="param-row">
+            <text class="form-label">📸 静态照片</text>
+          </view>
+          <button class="capture-btn" bindtap="captureStill">拍摄照片</button>
+        </view>
+      </view>
+
+      <!-- 状态栏 -->
+      <view class="status-bar" wx:if="{{cameraReady}}">
+        <text class="status-text">✅ 相机已就绪</text>
+        <text class="status-text" wx:if="{{timecode}}">⏱️ {{timecode}}</text>
+        <text class="status-text" wx:if="{{isRecording}}">🔴 REC</text>
+      </view>
+    </view>
+  </view>
+</view>
